@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчет по контрактам</title>
+    <style>
+        h2, h3 {
+            text-align: center;
+        }
+
+        th {
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            /* Ширина таблицы */
+            border-collapse: collapse;
+            /* Убираем двойные линии между ячейками */
+        }
+        td, th {
+            border: 1px solid black;
+            /* Параметры рамки */
+        }
+        td {
+            padding-left: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Сметы по контракту №{{ contract.pk }} клиента "{{ contract.client.name }}"</h2>
+    {% for invoice in invoices %}
+    <h3>Смета №{{ invoice.pk }}</h3>
+    <table>
+        <tbody>
+            <tr>
+                <td>Составитель</td>
+                <td>{{ invoice.user.last_name }} {{ invoice.user.first_name }} {{ invoice.user.middle_name }}</td>
+            </tr>
+            <tr>
+                <td>Дата и время составления</td>
+                <td>{{ invoice.created_at }}</td>
+            </tr>
+            <tr>
+                <td>Описание</td>
+                <td>{{ invoice.description }}</td>
+            </tr>
+            <tr>
+                <td>Общая стоимость материалов и услуг</td>
+                <td>{{ invoice.total_price }} руб</td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>Смета стоимости используемых материалов: </h3>
+    <table>
+        <thead>
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Количество</th>
+            <th>Единицы измерения</th>
+            <th>Стоимость за штуку</th>
+            <th>Общая стоимость</th>
+        </thead>
+        <tbody>
+            {% for material in invoice.invoicematerial_set.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ material.material.name }}</td>
+                <td>{{ material.quantity }}</td>
+                <td>{{ material.material.measure_type }}</td>
+                <td>{{ material.unit_price }} руб</td>
+                <td>{% widthratio material.unit_price 1 material.quantity %} руб</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td style="font-weight: bold;">Итого</td>
+                <td>{{ invoice.total_price_materials }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>Смета стоимости предоставляемых услуг: </h3>
+    <table>
+        <thead>
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Количество</th>
+            <th>Стоимость за штуку</th>
+            <th>Общая стоимость</th>
+        </thead>
+        <tbody>
+            {% for service in invoice.invoiceservice_set.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ service.service.name }}</td>
+                <td>{{ service.quantity }}</td>
+                <td>{{ service.unit_price }}</td>
+                <td>{% widthratio service.unit_price 1 service.quantity%}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td style="font-weight: bold;">Итого</td>
+                <td>{{ invoice.total_price_services }}</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endfor %}
+</body>
+
+</html>

@@ -2,6 +2,17 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+class Position(models.Model):
+    name = models.CharField(max_length=255, verbose_name='Наименование')
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Должность'
+        verbose_name_plural = 'Должности'
+
+
 class Employee(models.Model):
 
     gender_choices = (
@@ -20,7 +31,16 @@ class Employee(models.Model):
         to=User, 
         on_delete=models.CASCADE, 
         related_name='employee',
-        verbose_name='Пользователь'
+        verbose_name='Пользователь',
+        blank=True,
+        null=True
+    )
+    position = models.ForeignKey(
+        to=Position,
+        on_delete=models.CASCADE,
+        related_name='employees',
+        verbose_name='Должность',
+        null=True
     )
 
     def __str__(self):
@@ -28,4 +48,4 @@ class Employee(models.Model):
 
     class Meta:
         verbose_name = 'Сотрудник'
-        verbose_name_plural = 'Сотрудник'
+        verbose_name_plural = 'Сотрудники'

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчет по контрактам</title>
+    <style>
+        h2, p {
+            text-align: center;
+        }
+
+        th {
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td,
+        th {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    {% if signed_at_start and signed_at_end %}
+    <h2>Отчет по заключенным контрактам c {{ signed_at_start }} по {{ signed_at_end }}</h2>
+    {% else %}
+    <h2>Отчет по заключенным контрактам за все время</h2>
+    {% endif %}
+    {% if objects.exists %}
+    <table>
+        <thead>
+            <th>№</th>
+            <th>Номер</th>
+            <th>ФИО клиента</th>
+            <th>ФИО менеджера</th>
+            <th>Дата подписания</th>
+            <th>Дата исполнения</th>
+            <th>Сумма по сметам</th>
+        </thead>
+        <tbody>
+            {% for obj in objects %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ obj.id }}</td>
+                <td>{{ obj.client }}</td>
+                <td>{{ obj.manager }}</td>
+                <td>{{ obj.signed_at }}</td>
+                <td>{{ obj.executed_at }}</td>
+                <td>{{ obj.total_invoice_price }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Нет данных за указанный период</p>
+    {% endif %}
+</body>
+
+</html>

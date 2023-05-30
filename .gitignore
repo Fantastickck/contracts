@@ -131,3 +131,9 @@ dmypy.json
 
 # Database
 data/
+
+# Media files
+media/
+
+# .vscode settings
+.vscode/

@@ -3,23 +3,24 @@ from django.db import models
 from .contract import Contract
 from .employee import Employee
 from .material import Material
+from .supplier import Supplier
 
 
 class Estimate(models.Model):
-    created_at = models.DateTimeField(verbose_name='Дата составления')
-    description = models.TextField(verbose_name='Описание')
+    created_at = models.DateTimeField(verbose_name='Дата и Время поставки')
+    description = models.TextField(verbose_name='Описание', null=True, blank=True)
 
-    tech_lid = models.ForeignKey(
+    employee = models.ForeignKey(
         to=Employee,
         on_delete=models.CASCADE,
         related_name='estimates',
-        verbose_name='Начальник отдела производства'
+        verbose_name='Специалист по закупкам',
     )
-    contract = models.ForeignKey(
-        to=Contract, 
+    supplier = models.ForeignKey(
+        to=Supplier, 
         on_delete=models.CASCADE, 
         related_name='estimates',
-        verbose_name='Контракт'
+        verbose_name='Поставщик',
     )
 
     materials = models.ManyToManyField(
@@ -29,17 +30,17 @@ class Estimate(models.Model):
     )
 
     def __str__(self):
-        return str(self.id)
+        return f'Накладная №{str(self.id)}'
 
     class Meta:
-        verbose_name = 'Смета'
-        verbose_name_plural = 'Сметы'
+        verbose_name = 'Накладная'
+        verbose_name_plural = 'Накладные'
 
 
 class EstimateMaterial(models.Model):
 
     estimate = models.ForeignKey(
-        to=Estimate(),
+        to=Estimate,
         on_delete=models.CASCADE,
         verbose_name='Накладная'
     )
@@ -49,9 +50,9 @@ class EstimateMaterial(models.Model):
         verbose_name='Материал'
     )
 
-    unit_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name='Стоимость за одну'
+    quantity = models.IntegerField(
+        verbose_name='Количество'
     )
-    quantity = models.IntegerField(verbose_name='Количество')
+
+    def __str__(self):
+        return ''

@@ -19,7 +19,9 @@ services:
       context: ./app
     volumes:
       - "./app:/app"
-    command: bash -c "python manage.py runserver 0.0.0.0:8000"
+    command: bash -c "
+      python manage.py runserver 0.0.0.0:8000
+      && python manage.py migrate"
     ports:
       - "8000:8000"
     environment:

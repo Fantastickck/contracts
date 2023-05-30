@@ -2,84 +2,49 @@ from django.db import models
 
 from .employee import Employee
 from .client import Client
-from .service import Service
-from .material import Material
 
 
 class Contract(models.Model):
-    signed_at = models.DateField(verbose_name='Дата подписания')
-    executed_at = models.DateField(verbose_name='Дата исполнения')
-    description = models.TextField(verbose_name='Описание')
+    signed_at = models.DateField(verbose_name="Дата подписания")
+    executed_at = models.DateField(verbose_name="Дата исполнения")
+    description = models.TextField(verbose_name="Описание")
 
     client = models.ForeignKey(
-        to=Employee,
-        on_delete=models.CASCADE,
-        related_name='contracts',
-        verbose_name='Клиент'
-    )
-    manager = models.ForeignKey(
         to=Client,
         on_delete=models.CASCADE,
-        related_name='contracts',
-        verbose_name='Менеджер'
+        related_name="contracts",
+        verbose_name="Клиент",
     )
-
-    services = models.ManyToManyField(
-        to=Service,
-        through='ContractService',
-        related_name='contracts'
-    )
-    materials = models.ManyToManyField(
-        to=Material,
-        through='ContractMaterial',
-        related_name='contracts'
+    manager = models.ForeignKey(
+        to=Employee,
+        on_delete=models.CASCADE,
+        related_name="contracts",
+        verbose_name="Менеджер",
     )
 
     def __str__(self):
-        return f'{self.client.name} | {self.signed_at}'
-    
+        return f"{self.client.name} | {self.signed_at}"
+
+    def total_invoice_price(self):
+        total_price_materials = self.invoices.aggregate(
+            total_price=models.Sum(
+                models.F("invoicematerial__unit_price")
+                * models.F("invoicematerial__quantity")
+            )
+        )["total_price"]
+        total_price_services = self.invoices.aggregate(
+            total_price=models.Sum(
+                models.F("invoiceservice__unit_price")
+                * models.F("invoiceservice__quantity")
+            )
+        )["total_price"]
+        total_price = 0
+        if total_price_materials:
+            total_price += total_price_materials
+        if total_price_services:
+            total_price += total_price_services
+        return total_price
+
     class Meta:
-        verbose_name = 'Контракт'
-        verbose_name_plural = 'Контракты'
-
-
-class ContractService(models.Model):
-
-    contract = models.ForeignKey(
-        to=Contract,
-        on_delete=models.CASCADE,
-        verbose_name='Контракт'
-    )
-    service = models.ForeignKey(
-        to=Service,
-        on_delete=models.CASCADE,
-        verbose_name='Услуга'
-    )
-
-    unit_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name='Стоимость за одну'
-    )
-    quantity = models.IntegerField(verbose_name='Количество')
-
-
-class ContractMaterial(models.Model):
-
-    contract = models.ForeignKey(
-        to=Contract,
-        on_delete=models.CASCADE,
-        verbose_name='Контракт'
-    )
-    material = models.ForeignKey(
-        to=Material,
-        on_delete=models.CASCADE,
-        verbose_name='Материал'
-    )
-
-    unit_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name='Стоимость за одну'
-    )
-    quantity = models.IntegerField(verbose_name='Количество')
+        verbose_name = "Контракт"
+        verbose_name_plural = "Контракты"
