@@ -31,6 +31,14 @@ class Estimate(models.Model):
 
     def __str__(self):
         return f'Накладная №{str(self.id)}'
+    
+    def total_price(self):
+        total = self.estimatematerial_set.aggregate(
+            total_price=models.Sum(models.F('quantity') * models.F('material__price'))
+        )
+        if total['total_price']:
+            return total['total_price']
+        return 0
 
     class Meta:
         verbose_name = 'Накладная'

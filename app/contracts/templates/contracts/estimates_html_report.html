@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Отчет по контрактам</title>
+    <title>Отчет по накладным</title>
     <style>
         h2, p {
             text-align: center;
@@ -31,38 +31,33 @@
 </head>
 
 <body>
-    {% if signed_at_start and signed_at_end %}
-    <h2>Отчет по заключенным контрактам c {{ signed_at_start }} по {{ signed_at_end }}</h2>
-    {% elif signed_at_start %}
-    <h2>Отчет по заключенным контрактам c {{ signed_at_start }} по настоящее время</h2>
+    {% if created_at_start and created_at_end %}
+    <h2>Отчет по накладным c {{ created_at_start }} по {{ created_at_end }}</h2>
     {% else %}
-    <h2>Отчет по заключенным контрактам за все время</h2>
+    <h2>Отчет по накладным за все время</h2>
     {% endif %}
     {% if objects.exists %}
     <table>
         <thead>
             <th>№</th>
-            <th>Номер</th>
-            <th>ФИО клиента</th>
-            <th>ФИО менеджера</th>
-            <th>Дата подписания</th>
-            <th>Дата исполнения</th>
-            <th>Стоимость смет, руб</th>
+            <th>ID сметы</th>
+            <th>Дата и время поставки</th>
+            <th>Специалист по закупкам</th>
+            <th>Поставщик</th>
+            <th>Стоимость материалов, руб</th>
         </thead>
         <tbody>
             {% for obj in objects %}
             <tr>
                 <td>{{ forloop.counter }}</td>
                 <td>{{ obj.id }}</td>
-                <td>{{ obj.client }}</td>
-                <td>{{ obj.manager }}</td>
-                <td>{{ obj.signed_at }}</td>
-                <td>{{ obj.executed_at }}</td>
-                <td class="price">{{ obj.total_invoice_price }}</td>
+                <td>{{ obj.created_at }}</td>
+                <td>{{ obj.employee }}</td>
+                <td>{{ obj.supplier }}</td>
+                <td class="price" >{{ obj.total_price }}</td>
             </tr>
             {% endfor %}
             <tr>
-                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>

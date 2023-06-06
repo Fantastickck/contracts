@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчет по общим стоимостям заключенных контрактов клиентов</title>
+    <style>
+        h2, p {
+            text-align: center;
+        }
+
+        th {
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td,
+        th {
+            border: 1px solid black;
+        }
+        .price {
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+    <h3 style="text-align: center;">Отчет по общим стоимостям заключенных контрактов клиентами</h3>
+    <table>
+        <thead>
+            <th>№</th>
+            <th>Номер</th>
+            <th>Наименование организации</th>
+            <th>ФИО контактного лица</th>
+            <th>Email</th>
+            <th>Номер телефона</th>
+            <th>Адрес</th>
+            <th>Общая сумма заключенных контрактов, руб</th>
+        </thead>
+        <tbody>
+            {% for obj in clients %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ obj.id }}</td>
+                <td>{{ obj.name }}</td>
+                <td>{{ obj.last_name }} {{ obj.first_name }} {{ obj.middle_name }}</td>
+                <td>{{ obj.email }}</td>
+                <td>{{ obj.phone_number }}</td>
+                <td>{{ obj.address }}</td>
+                <td class="price">{{ obj.total_contracts_price }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+
+</html>

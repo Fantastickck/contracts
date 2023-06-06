@@ -21,12 +21,21 @@
             border-collapse: collapse;
             /* Убираем двойные линии между ячейками */
         }
+
         td, th {
             border: 1px solid black;
             /* Параметры рамки */
         }
+
         td {
             padding-left: 5px;
+        }
+
+        .price {
+            text-align: right;
+        }
+        .total_price {
+            font-weight: bold;
         }
     </style>
 </head>
@@ -62,8 +71,8 @@
             <th>Наименование</th>
             <th>Количество</th>
             <th>Единицы измерения</th>
-            <th>Стоимость за штуку</th>
-            <th>Общая стоимость</th>
+            <th>Стоимость за штуку, руб</th>
+            <th>Общая стоимость, руб</th>
         </thead>
         <tbody>
             {% for material in invoice.invoicematerial_set.all %}
@@ -72,8 +81,8 @@
                 <td>{{ material.material.name }}</td>
                 <td>{{ material.quantity }}</td>
                 <td>{{ material.material.measure_type }}</td>
-                <td>{{ material.unit_price }} руб</td>
-                <td>{% widthratio material.unit_price 1 material.quantity %} руб</td>
+                <td class="price">{{ material.unit_price }}</td>
+                <td class="price">{{ material.total_price }}</td>
             </tr>
             {% endfor %}
             <tr>
@@ -82,7 +91,7 @@
                 <td></td>
                 <td></td>
                 <td style="font-weight: bold;">Итого</td>
-                <td>{{ invoice.total_price_materials }}</td>
+                <td class="price total_price">{{ invoice.total_price_materials }}</td>
             </tr>
         </tbody>
     </table>
@@ -92,8 +101,8 @@
             <th>№</th>
             <th>Наименование</th>
             <th>Количество</th>
-            <th>Стоимость за штуку</th>
-            <th>Общая стоимость</th>
+            <th>Стоимость за штуку, руб</th>
+            <th>Общая стоимость, руб</th>
         </thead>
         <tbody>
             {% for service in invoice.invoiceservice_set.all %}
@@ -101,8 +110,8 @@
                 <td>{{ forloop.counter }}</td>
                 <td>{{ service.service.name }}</td>
                 <td>{{ service.quantity }}</td>
-                <td>{{ service.unit_price }}</td>
-                <td>{% widthratio service.unit_price 1 service.quantity%}</td>
+                <td class="price">{{ service.unit_price }}</td>
+                <td class="price">{{ service.total_price }}</td>
             </tr>
             {% endfor %}
             <tr>
@@ -110,7 +119,7 @@
                 <td></td>
                 <td></td>
                 <td style="font-weight: bold;">Итого</td>
-                <td>{{ invoice.total_price_services }}</td>
+                <td class="price total_price">{{ invoice.total_price_services }}</td>
             </tr>
         </tbody>
     </table>

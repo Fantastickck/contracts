@@ -7,7 +7,7 @@ class Service(models.Model):
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        verbose_name='Стоимость'
+        verbose_name='Стоимость за единицу, руб'
     )
 
     def __str__(self):

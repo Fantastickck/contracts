@@ -4,11 +4,12 @@ from datetime import datetime
 
 from django import forms
 from django.db import models
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.text import Truncator
 from django.utils.safestring import mark_safe
 from django.http.response import HttpResponse
 from django.shortcuts import render
+from django.core.exceptions import ValidationError
 from django_object_actions import DjangoObjectActions, action
 from nested_admin.nested import NestedTabularInline, NestedModelAdmin
 from rangefilter.filters import DateRangeFilterBuilder
@@ -35,29 +36,14 @@ admin.site.site_header = "Учет контрактов"
 admin.site.index_title = "Информационная система для учета контрактов"
 
 
-@admin.register(Client)
-class AdminClient(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "name",
-        "last_name",
-        "first_name",
-        "middle_name",
-        "email",
-        "phone_number",
-        "address",
-    )
-    search_fiels = ("name",)
-    sortable_by = (
-        "id",
-        "name",
-        "last_name",
-        "first_name",
-        "middle_name",
-        "email",
-        "phone_number",
-        "address",
-    )
+def custom_titled_filter(title):
+    class Wrapper(admin.FieldListFilter):
+        def __new__(cls, *args, **kwargs):
+            instance = admin.FieldListFilter.create(*args, **kwargs)
+            instance.title = title
+            return instance
+
+    return Wrapper
 
 
 @admin.register(Employee)
@@ -71,7 +57,15 @@ class AdminEmployee(admin.ModelAdmin):
         "position",
         "phone_number",
         "email",
+        "date_of_birth",
+        "date_of_hiring",
         "photo_show",
+    )
+    search_fields = ("last_name", "middle_name", "first_name", "phone_number", "email")
+    list_filter = (
+        ("position__name", custom_titled_filter(title="Должность")),
+        ("date_of_birth", DateRangeFilterBuilder()),
+        ("date_of_hiring", DateRangeFilterBuilder()),
     )
 
     readonly_fields = ("photo_show",)
@@ -91,7 +85,7 @@ class AdminEmployee(admin.ModelAdmin):
 
 class InvoicePositionMaterialForm(forms.ModelForm):
     material = forms.ModelChoiceField(Material.objects.all())
-    unit_price = forms.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = forms.DecimalField(max_digits=10, decimal_places=2, label='Стоимость за штуку, руб')
     quantity = forms.IntegerField()
 
 
@@ -112,12 +106,18 @@ class InvoicePositionMaterialInline(NestedTabularInline):
             return obj.quantity * obj.unit_price
         return ""
 
-    price.short_description = "Стоимость позиции"
+    price.short_description = "Стоимость позиции, руб"
     measure_type.short_description = "Единицы измерения"
 
 
+class InvoicePositionServiceForm(forms.ModelForm):
+    service = forms.ModelChoiceField(Service.objects.all())
+    unit_price = forms.DecimalField(max_digits=10, decimal_places=2, label='Стоимость за одну, руб')
+    quantity = forms.IntegerField()
+
 class InvoicePositionServiceInline(NestedTabularInline):
     model = InvoiceService
+    form = InvoicePositionServiceForm
     can_delete = True
     readonly_fields = ("price",)
     extra = 0
@@ -127,7 +127,7 @@ class InvoicePositionServiceInline(NestedTabularInline):
             return obj.quantity * obj.unit_price
         return ""
 
-    price.short_description = "Стоимость позиции"
+    price.short_description = "Стоимость позиции, руб"
 
 
 def truncated_desc(obj):
@@ -184,9 +184,9 @@ class InvoiceInline(NestedTabularInline):
             ).select_related("position")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    total_price_materials.short_description = "Стоимость материалов"
-    total_price_services.short_description = "Стоимость услуг"
-    total_price.short_description = "Общая стоимость"
+    total_price_materials.short_description = "Стоимость материалов, руб"
+    total_price_services.short_description = "Стоимость услуг, руб"
+    total_price.short_description = "Общая стоимость, руб"
 
 
 @admin.register(Contract)
@@ -201,11 +201,17 @@ class AdminContract(DjangoObjectActions, NestedModelAdmin):
     )
     inlines = [InvoiceInline]
     list_filter = (("signed_at", DateRangeFilterBuilder()),)
-    ordering = ('id',)
+    search_fields = ("client__name",)
+    ordering = ("id",)
 
     actions = ("export_as_csv",)
     change_actions = ("export_invoices_as_html",)
     changelist_actions = ("export_contracts_as_html",)
+
+    class Media:
+        css = {
+            "all": ("css/red_star.css",)
+        }
 
     def total_invoices_price(self, obj: Contract):
         invoices_ids = Invoice.objects.values("id").filter(contract=obj)
@@ -237,33 +243,38 @@ class AdminContract(DjangoObjectActions, NestedModelAdmin):
 
         return response
 
-    @action(label="Выгрузить в HTML", attrs={"target": "_blank"})
+    @action(label="Отчет по контрактам в HTML", attrs={"target": "_blank"})
     def export_contracts_as_html(self, request, queryset):
-        queryset = queryset.order_by('id')
-        context = {"object": queryset}
-        import logging
+        queryset = queryset.order_by("id")
+        context = {"objects": queryset}
 
         if "_changelist_filters" in request.GET:
             filter_dict = parse.parse_qs(
                 parse.urlsplit("?" + request.GET.get("_changelist_filters")).query
             )
             filter_dict = {key: value[0] for key, value in filter_dict.items()}
-            signed_at_gte = datetime.strptime(
-                filter_dict["signed_at__range__gte"], "%d.%m.%Y"
-            ).strftime("%Y-%m-%d")
-            signed_at_lte = datetime.strptime(
-                filter_dict["signed_at__range__lte"], "%d.%m.%Y"
-            ).strftime("%Y-%m-%d")
-
-            queryset = queryset.filter(
-                signed_at__gte=signed_at_gte, signed_at__lt=signed_at_lte
-            )
-
-            context["signed_at_start"] = signed_at_gte
-            context["signed_at_end"] = signed_at_lte
+            if 'signed_at__range__gte' in filter_dict:
+                signed_at_gte = datetime.strptime(
+                    filter_dict["signed_at__range__gte"], "%d.%m.%Y"
+                ).strftime("%Y-%m-%d")
+                queryset = queryset.filter(
+                    signed_at__gte=signed_at_gte
+                )
+                context["signed_at_start"] = signed_at_gte
+            if 'signed_at__range__lte' in filter_dict:
+                signed_at_lte = datetime.strptime(
+                    filter_dict["signed_at__range__lte"], "%d.%m.%Y"
+                ).strftime("%Y-%m-%d")
+                queryset = queryset.filter(
+                    signed_at__lte=signed_at_lte
+                )
+                context["signed_at_end"] = signed_at_lte
 
             context["objects"] = queryset
-        logging.warning(context)
+        total_price = 0
+        for contract in queryset:
+            total_price += contract.total_invoice_price()
+        context['total_price'] = total_price
         return render(request, "contracts/contracts_html_report.html", context)
 
     @action(label="Сметы в HTML", attrs={"target": "_blank"})
@@ -284,12 +295,40 @@ class AdminContract(DjangoObjectActions, NestedModelAdmin):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     export_as_csv.short_description = "Выгрузить в формате CSV"
-    total_invoices_price.short_description = "Стоимость смет"
+    total_invoices_price.short_description = "Стоимость смет, руб"
+
+
+@admin.register(Client)
+class AdminClient(DjangoObjectActions, admin.ModelAdmin):
+    list_display = (
+        "id",
+        "name",
+        "last_name",
+        "first_name",
+        "middle_name",
+        "email",
+        "phone_number",
+        "address",
+    )
+    search_fiels = ("name", "email")
+    changelist_actions = ("export_clients_rating_as_html",)
+
+    @action(label="Отчет по общим стоимостям заключенных контрактов клиентами в HTML", attrs={"target": "_blank"})
+    def export_clients_rating_as_html(self, request, queryset):
+        queryset = sorted(Client.objects.all(), key=lambda x: -x.total_contracts_price)
+        import logging
+        logging.warn(queryset)
+        return render(
+            request,
+            "contracts/clients_contracts_html_report.html",
+            {"clients": queryset},
+        )
 
 
 @admin.register(Position)
 class AdminPosition(admin.ModelAdmin):
     list_display = ("name",)
+    search_fields = ("name",)
 
 
 @admin.register(MeasureType)
@@ -301,19 +340,32 @@ class AdminMeasureType(admin.ModelAdmin):
 class AdminMaterial(admin.ModelAdmin):
     list_display = (
         "name",
-        "price",
+        "get_price",
         "measure_type",
     )
+    search_fields = ("name",)
+
+    def get_price(self, obj):
+        return obj.price
+
+    get_price.short_description = 'Стоимость за штуку, руб'
 
 
 @admin.register(Service)
 class AdminService(admin.ModelAdmin):
-    list_display = ("name", "price")
+    list_display = ("name", "get_price")
+    search_fields = ("name",)
+
+    def get_price(self, obj):
+        return obj.price
+
+    get_price.short_description = 'Стоимость за штуку, руб'
 
 
 @admin.register(Supplier)
 class AdminSupplier(admin.ModelAdmin):
     list_display = ("id", "name", "email", "address", "phone_number")
+    search_fields = ("email", "name", "phone_number")
 
 
 class EstimateMaterialInline(NestedTabularInline):
@@ -330,32 +382,67 @@ class EstimateMaterialInline(NestedTabularInline):
         return obj.material.measure_type
 
     def unit_price(self, obj: EstimateMaterial):
-        return f'{obj.material.price} руб'
+        return f"{obj.material.price} руб"
 
     def total_price(self, obj: EstimateMaterial):
-        return f'{obj.material.price * obj.quantity} руб'
+        return f"{obj.material.price * obj.quantity} руб"
 
-    measure_type.short_description = "Цена за единицу"
-    unit_price.short_description = "Цена за единицу"
-    total_price.short_description = "Сумма по позиции"
+    measure_type.short_description = "Стоимость за единицу, руб"
+    unit_price.short_description = "Стоимость за единицу, руб"
+    total_price.short_description = "Стоимость позиции, руб"
 
 
 @admin.register(Estimate)
-class AdminEstimate(NestedModelAdmin, admin.ModelAdmin):
+class AdminEstimate(DjangoObjectActions, NestedModelAdmin):
     list_display = ("id", "created_at", "employee", "supplier", "total_price")
     list_filter = (("created_at", DateRangeFilterBuilder()),)
-    readonly_fields = ('total_price',)
+    readonly_fields = ("total_price",)
+    changelist_actions = ("export_estimates_as_html",)
 
     inlines = [EstimateMaterialInline]
 
     def total_price(self, obj: Estimate):
         total_price = obj.materials.aggregate(
             total_price=models.Sum(
-                models.F('estimatematerial__quantity')
-                * models.F('estimatematerial__material__price')
+                models.F("estimatematerial__quantity")
+                * models.F("estimatematerial__material__price")
             )
-        )['total_price'] 
-        return f'{total_price} руб'
+        )["total_price"]
+        return total_price
+    
+    @action(label="Отчет по накладным в HTML", attrs={"target": "_blank"})
+    def export_estimates_as_html(self, request, queryset):
+        queryset = queryset.order_by("id")
+        context = {"objects": queryset}
+
+        if "_changelist_filters" in request.GET:
+            filter_dict = parse.parse_qs(
+                parse.urlsplit("?" + request.GET.get("_changelist_filters")).query
+            )
+            filter_dict = {key: value[0] for key, value in filter_dict.items()}
+            if 'created_at__range__gte' in filter_dict:
+                created_at_gte = datetime.strptime(
+                    filter_dict["created_at__range__gte"], "%d.%m.%Y"
+                ).strftime("%Y-%m-%d")
+                queryset = queryset.filter(
+                    created_at__gte=created_at_gte
+                )
+                context["created_at_start"] = created_at_gte
+            if 'created_at__range__lte' in filter_dict:
+                created_at_lte = datetime.strptime(
+                    filter_dict["created_at__range__lte"], "%d.%m.%Y"
+                ).strftime("%Y-%m-%d")
+                queryset = queryset.filter(
+                    created_at__lte=created_at_lte
+                )
+                context["created_at_end"] = created_at_lte
+
+            context["objects"] = queryset
+        total_price = 0
+        for estimate in queryset:
+            total_price += estimate.total_price()
+        context['total_price'] = total_price
+        return render(request, "contracts/estimates_html_report.html", context)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "employee":
@@ -364,4 +451,4 @@ class AdminEstimate(NestedModelAdmin, admin.ModelAdmin):
             ).select_related("position")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    total_price.short_description = "Сумма"
+    total_price.short_description = "Стоимость материалов, руб"

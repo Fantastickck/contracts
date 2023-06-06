@@ -12,6 +12,13 @@ class Client(models.Model):
 
     def __str__(self):
         return self.name
+    
+    @property
+    def total_contracts_price(self):
+        total_price = 0
+        for contract in self.contracts.all():
+            total_price += contract.total_invoice_price()
+        return total_price
 
     class Meta:
         verbose_name = 'Клиент'

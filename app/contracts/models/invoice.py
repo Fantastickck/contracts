@@ -69,6 +69,9 @@ class InvoiceService(models.Model):
     def __str__(self):
         return f"Позиция №{self.pk}"
     
+    def total_price(self):
+        return self.quantity * self.unit_price
+    
     class Meta:
         verbose_name = 'Услуга'
         verbose_name_plural = 'Услуги'
@@ -89,7 +92,10 @@ class InvoiceMaterial(models.Model):
 
     def __str__(self):
         return f"Позиция №{self.pk}"
-
+    
+    def total_price(self):
+        return self.quantity * self.unit_price
+    
     class Meta:
         verbose_name = 'Материал'
         verbose_name_plural = 'Материалы'

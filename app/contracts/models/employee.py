@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -25,6 +27,7 @@ class Employee(models.Model):
     middle_name = models.CharField(max_length=150, blank=True, verbose_name='Отчество')
     gender = models.CharField(choices=gender_choices, verbose_name='Пол')
     date_of_birth = models.DateField(verbose_name='Дата рождения')
+    date_of_hiring = models.DateField(verbose_name='Дата найма', default=date.today)
     phone_number = models.CharField(verbose_name='Номер телефона')
     photo = models.ImageField(upload_to='photos/%Y/%m/%d', verbose_name='Фото')
     user = models.OneToOneField(
